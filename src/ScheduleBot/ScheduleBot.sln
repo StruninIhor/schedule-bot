@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30803.129
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduleBot.Web", "ScheduleBot.Web\ScheduleBot.Web.csproj", "{AF84C654-3A7A-4AF7-AEA2-841DD81155AE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduleBot.Data", "ScheduleBot.Data\ScheduleBot.Data.csproj", "{A65E1280-F8CD-43D5-B738-C53A7CE387C0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF84C654-3A7A-4AF7-AEA2-841DD81155AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF84C654-3A7A-4AF7-AEA2-841DD81155AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF84C654-3A7A-4AF7-AEA2-841DD81155AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF84C654-3A7A-4AF7-AEA2-841DD81155AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A65E1280-F8CD-43D5-B738-C53A7CE387C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A65E1280-F8CD-43D5-B738-C53A7CE387C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A65E1280-F8CD-43D5-B738-C53A7CE387C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A65E1280-F8CD-43D5-B738-C53A7CE387C0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A0BA63B7-BE95-40A9-9586-68E2E7CE6620}
+	EndGlobalSection
+EndGlobal
