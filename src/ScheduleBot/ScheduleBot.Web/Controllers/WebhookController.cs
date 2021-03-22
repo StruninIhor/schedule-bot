@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using ScheduleBot.Data;
-using ScheduleBot.Data.Models;
 using ScheduleBot.Web.Configurations;
 using ScheduleBot.Web.Services;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot.Types;
@@ -23,9 +24,32 @@ namespace ScheduleBot.Web.Controllers
         private readonly IBotService _botService;
         private readonly ILessonService _lessonService;
         private readonly BotMessageConfiguration _botMessageConfiguration;
-
-        public WebhookController(BotDbContext context, IBotService botService, ILessonService lessonService, IOptions<BotMessageConfiguration> botMessageConfiguration)
-            => (_context, _botService, _lessonService, _botMessageConfiguration) = (context, botService, lessonService, botMessageConfiguration.Value);
+        private readonly IMessagesFormatService _messagesFormatService;
+        private readonly IReplyMarkup _replyMarkup;
+        private readonly ILogger<WebhookController> _logger;
+        public WebhookController(BotDbContext context,
+            IBotService botService,
+            ILessonService lessonService,
+            IOptions<BotMessageConfiguration> botMessageConfiguration,
+            IMessagesFormatService messagesFormatService,
+            ILogger<WebhookController> logger)
+        {
+            _context = context;
+            _botService = botService;
+            _lessonService = lessonService;
+            _botMessageConfiguration = botMessageConfiguration.Value;
+            _messagesFormatService = messagesFormatService;
+            _replyMarkup = new ReplyKeyboardMarkup(new KeyboardButton[][] { new KeyboardButton[] {
+                new KeyboardButton(_botMessageConfiguration.NowLessonsCommand)
+            },
+            new KeyboardButton[]
+            {
+                new KeyboardButton(_botMessageConfiguration.TodaysScheduleCommand),
+                new KeyboardButton(_botMessageConfiguration.TomorrowScheduleCommand)
+            }
+            }, resizeKeyboard: true);
+            _logger = logger;
+        }
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] Update update)
@@ -35,6 +59,10 @@ namespace ScheduleBot.Web.Controllers
                if (update.Message.Chat.Type == ChatType.Private)
                {
                     await ProcessPrivateMessage(update);
+               }
+               else if (update.Message.From.Id == _botMessageConfiguration.AdminId && update.Message.Text == "/ping")
+               {
+                    _logger.LogWarning("PING, chatId : {chatId}", update.Message.Chat.Id);               
                }
             }
             return Ok();
@@ -46,14 +74,7 @@ namespace ScheduleBot.Web.Controllers
             {
                 await ProcessAdmin(update);
             }
-            if (update.Message.Text == _botMessageConfiguration.LessonsCommand)
-            {
-                await SendLessons(update);
-            }
-            else
-            {
-                await _botService.Client.SendTextMessageAsync(update.Message.From.Id, "I can only send current lesson for now", replyMarkup: new ReplyKeyboardMarkup(new KeyboardButton[] { new KeyboardButton(_botMessageConfiguration.LessonsCommand) }, true));
-            }
+            await ProcessCommands(update);
         }
 
         private async Task ProcessAdmin(Update update)
@@ -67,9 +88,29 @@ namespace ScheduleBot.Web.Controllers
                     .ToArrayAsync(HttpContext.RequestAborted);
                 foreach (var lesson in lessons)
                 {
-                    await _botService.Client.SendTextMessageAsync(update.Message.From.Id, FormatMessage(lesson), disableWebPagePreview: true);
+                    await _botService.Client.SendTextMessageAsync(update.Message.From.Id, _messagesFormatService.FormatLesson(lesson), ParseMode.Markdown, disableWebPagePreview: true);
                 }
             }
+        }
+
+        private Task ProcessCommands(Update update)
+        {
+            var messageText = update.Message.Text;
+            if (messageText == "/start")
+            {
+                return SendText(update, _botMessageConfiguration.HelloMessage);
+            }
+            else if (messageText == _botMessageConfiguration.NowLessonsCommand)
+            {
+                return SendLessons(update);
+            } else if (messageText == _botMessageConfiguration.TodaysScheduleCommand)
+            {
+                return SendSchedule(update, DateTime.Now, _botMessageConfiguration.TodayNoLessonsMessage);
+            } else if (messageText == _botMessageConfiguration.TomorrowScheduleCommand)
+            {
+                return SendSchedule(update, DateTime.Now.AddDays(1), _botMessageConfiguration.TomorrowNoLessonsMessage);
+            }
+            return SendText(update, _botMessageConfiguration.NotUnderstandMessage);
         }
         private async Task SendLessons(Update update)
         {
@@ -77,15 +118,26 @@ namespace ScheduleBot.Web.Controllers
             await foreach (var lesson in _lessonService.GetLessonsForDate())
             {
                 anyLesson = true;
-                await _botService.Client.SendTextMessageAsync(update.Message.From.Id, FormatMessage(lesson))
-                    .ConfigureAwait(false);
+                await SendText(update, _messagesFormatService.FormatLesson(lesson));
             }
             if (!anyLesson)
             {
-                await _botService.Client.SendTextMessageAsync(update.Message.From.Id, "No lessons now")
-                    .ConfigureAwait(false);
+                await SendText(update, _botMessageConfiguration.NoLessonsNowMessage);
             }
         }
-        private static string FormatMessage(object obj) => JsonConvert.SerializeObject(obj, Formatting.Indented, new StringEnumConverter());
+        private async Task SendSchedule(Update update, DateTime date, string noLessonsMessage)
+        {
+            var lessons = await _lessonService.GetLessonsForDay(HttpContext.RequestAborted, date);
+            if (lessons.Length == 0)
+            {
+                await SendText(update, noLessonsMessage);
+            }
+            else {
+                await SendText(update, _messagesFormatService.FormatLessons(lessons));
+            }
+        }
+
+        private Task SendText(Update update, string text) => _botService.Client.SendTextMessageAsync(update.Message.From.Id, text, parseMode: ParseMode.Markdown, replyMarkup: _replyMarkup);
+
     }
 }

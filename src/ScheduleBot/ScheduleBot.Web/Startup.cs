@@ -8,8 +8,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using ScheduleBot.Data;
 using ScheduleBot.Web.Configurations;
+using ScheduleBot.Web.Extensions;
 using ScheduleBot.Web.HealthChecks;
 using ScheduleBot.Web.Services;
+using ScheduleBot.Web.Services.ScheduledTasks;
+using System;
 
 namespace ScheduleBot.Web
 {
@@ -32,9 +35,16 @@ namespace ScheduleBot.Web
         {
 
             services.AddSingleton<IBotService, BotService>();
-            services.AddScoped<ILessonService, LessonService>();
+            services.AddScoped<ILessonService, LessonService>()
+                .AddSingleton<IMessagesFormatService, MessageFormatService>();
             services.Configure<BotConfiguration>(Configuration.GetSection("BotConfiguration"));
             services.Configure<BotMessageConfiguration>(Configuration.GetSection("BotMessageConfiguration"));
+            services.Configure<BotChatConfiguration>(Configuration.GetSection("BotChatConfiguration"));
+            services.AddCronJob<SendDayScheduleJob>(c =>
+            {
+                c.TimeZoneInfo = TimeZoneInfo.Local;
+                c.CronExpression = Configuration["ScheduleSendInterval"];
+            });
             services.AddDbContext<BotDbContext>(options =>
             {
                 options.UseNpgsql(Configuration.GetConnectionString("BotDb"), builder =>

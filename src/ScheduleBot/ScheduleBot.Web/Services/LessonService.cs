@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ScheduleBot.Web.Services
 {
@@ -19,31 +21,36 @@ namespace ScheduleBot.Web.Services
             _logger = logger;
         }
 
-        public IAsyncEnumerable<Lesson> GetLessonsForDate(DateTime? nullableDate)
+        public IAsyncEnumerable<Lesson> GetLessonsForDate(DateTime? nullableDate = null)
         {
             DateTime date = nullableDate ?? DateTime.Now;
+            var query = GetQueryForDate(date);
+            query = query.Where(x => x.TimeStart < date.TimeOfDay &&
+                    x.TimeEnd > date.TimeOfDay);
+            return query.AsAsyncEnumerable();
+        }
+
+        public async Task<Lesson[]> GetLessonsForDay(CancellationToken cancellationToken = default, DateTime? nullableDate = null)
+        {
+            DateTime date = nullableDate ?? DateTime.Now;
+            var query = GetQueryForDate(date);
+            return await query.ToArrayAsync().ConfigureAwait(false);
+        }
+
+        private IQueryable<Lesson> GetQueryForDate(DateTime date)
+        {
             int weekNumber = GetIso8601WeekOfYear(date);
             bool isOddWeek = weekNumber % 2 == 0;
             _logger.LogInformation("Requesting lessons for {requestDate}, week number is {weekNumber}, is odd: {isOddWeek}",
                 date, weekNumber, isOddWeek);
-            var q = _context.Lessons
-                .Where(x => (x.DayOfWeek == date.DayOfWeek &&
-                    x.TimeStart < date.TimeOfDay &&
-                    x.TimeEnd > date.TimeOfDay) &&
+            return _context.Lessons
+                .AsNoTracking()
+                .OrderBy(x => x.TimeStart)
+                .Where(x => x.DayOfWeek == date.DayOfWeek &&
                     (x.CustomRecurrency == CustomRecurrency.EachWeek ||
                     (isOddWeek && x.CustomRecurrency == CustomRecurrency.OddWeek) ||
                     (!isOddWeek && x.CustomRecurrency == CustomRecurrency.EvenWeek))
                     );
-            var l = q.ToList();
-            var lesson = _context.Lessons.FirstOrDefault();
-            var q_1 = lesson.DayOfWeek == date.DayOfWeek;
-            var q_2 = lesson.TimeStart < date.TimeOfDay;
-            var q_3 = lesson.TimeEnd > date.TimeOfDay;
-            var q_4 = lesson.CustomRecurrency == CustomRecurrency.EachWeek;
-            var q_5 = isOddWeek && lesson.CustomRecurrency == CustomRecurrency.OddWeek;
-
-            return q
-                .AsAsyncEnumerable();
         }
 
         // This presumes that weeks start with Monday.
