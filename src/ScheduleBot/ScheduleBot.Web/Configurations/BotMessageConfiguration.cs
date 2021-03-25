@@ -2,7 +2,7 @@
 {
     public class BotMessageConfiguration
     {
-        public int AdminId { get; set; }
+        public long AdminId { get; set; }
         public string NoLessonsNowMessage { get; set; }
         public string CurrentLessonsMessage { get; set; }
         public string NowLessonsCommand { get; set; }

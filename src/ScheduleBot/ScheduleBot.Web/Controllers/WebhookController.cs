@@ -79,17 +79,28 @@ namespace ScheduleBot.Web.Controllers
 
         private async Task ProcessAdmin(Update update)
         {
-            if (update.Message.Text == "/all")
+            switch (update.Message.Text)
             {
-                var lessons = await _context.Lessons
-                    .AsNoTracking()
-                    .OrderBy(x => x.DayOfWeek)
-                    .ThenBy(x => x.TimeStart)
-                    .ToArrayAsync(HttpContext.RequestAborted);
-                foreach (var lesson in lessons)
-                {
-                    await _botService.Client.SendTextMessageAsync(update.Message.From.Id, _messagesFormatService.FormatLesson(lesson), ParseMode.Markdown, disableWebPagePreview: true);
-                }
+                case "/all":
+                    {
+                        var lessons = await _context.Lessons
+                           .AsNoTracking()
+                           .OrderBy(x => x.DayOfWeek)
+                           .ThenBy(x => x.TimeStart)
+                           .ToArrayAsync(HttpContext.RequestAborted);
+                            foreach (var lesson in lessons)
+                            {
+                                await _botService.Client.SendTextMessageAsync(update.Message.From.Id, _messagesFormatService.FormatLesson(lesson), ParseMode.Markdown, disableWebPagePreview: true);
+                            }
+                        break;
+                    }
+                case "/chatConfig":
+                    {
+                        var chatConfiguration = HttpContext.RequestServices.GetService(typeof(IOptions<BotChatConfiguration>)) as IOptions<BotChatConfiguration>;
+                        await SendText(update, JsonConvert.SerializeObject(chatConfiguration?.Value));
+                        break;
+                    }       
+
             }
         }
 

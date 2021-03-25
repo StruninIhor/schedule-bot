@@ -2,7 +2,7 @@
 {
     public class BotChatConfiguration
     {
-        public int ChatId { get; set; }
+        public long ChatId { get; set; }
         public bool PinMessage { get; set; }
     }
 }
