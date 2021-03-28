@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
 using Microsoft.OpenApi.Models;
 using ScheduleBot.Data;
 using ScheduleBot.Web.Configurations;
@@ -34,6 +36,8 @@ namespace ScheduleBot.Web
         public void ConfigureServices(IServiceCollection services)
         {
 
+            services.AddHttpClient();
+            //services.RemoveAll<IHttpMessageHandlerBuilderFilter>();
             services.AddSingleton<IBotService, BotService>();
             services.AddScoped<ILessonService, LessonService>()
                 .AddSingleton<IMessagesFormatService, MessageFormatService>();
