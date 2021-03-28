@@ -54,6 +54,7 @@ namespace ScheduleBot.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] Update update)
         {
+            _logger.LogInformation("Processing update {@update}", update);
             if (update.Type == UpdateType.Message)
             {
                if (update.Message.Chat.Type == ChatType.Private)

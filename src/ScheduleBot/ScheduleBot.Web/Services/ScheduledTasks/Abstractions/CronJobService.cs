@@ -58,7 +58,14 @@ namespace ScheduleBot.Web.Services.ScheduledTasks.Abstractions
 
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        await ExecuteAsync(cancellationToken);
+                        try
+                        {
+                            await ExecuteAsync(cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            ProcessException(ex);
+                        }
                     }
 
                     if (!cancellationToken.IsCancellationRequested)
@@ -71,5 +78,10 @@ namespace ScheduleBot.Web.Services.ScheduledTasks.Abstractions
             await Task.CompletedTask;
         }
         protected abstract Task ExecuteAsync(CancellationToken cancellationToken);
+
+        protected virtual void ProcessException(Exception ex)
+        {
+            _logger.LogWarning(ex, "Error while executing task {taskName}", Name);
+        }
     }
 }

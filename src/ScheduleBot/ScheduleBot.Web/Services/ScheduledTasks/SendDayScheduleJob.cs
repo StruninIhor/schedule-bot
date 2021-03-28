@@ -1,6 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ScheduleBot.Data;
+using ScheduleBot.Data.Models;
 using ScheduleBot.Web.Configurations;
 using ScheduleBot.Web.Services.ScheduledTasks.Abstractions;
 using System;
@@ -38,16 +41,45 @@ namespace ScheduleBot.Web.Services.ScheduledTasks
             {
                 var lessonService = scope.ServiceProvider.GetService<ILessonService>();
                 var configuration = chatOptions.Value;
-                var todaysLessons = await lessonService.GetLessonsForDay(cancellationToken, DateTime.Now);
+                var todaysLessons = await lessonService.GetLessonsForDay(cancellationToken, DateTime.Now).ConfigureAwait(false);
                 var messageText = _messagesFormatService.FormatLessons(todaysLessons);
                 if (string.IsNullOrWhiteSpace(messageText))
                 {
                     messageText = scope.ServiceProvider.GetService<IOptionsSnapshot<BotMessageConfiguration>>().Value.TodayNoLessonsMessage;
                 }
-                var message = await _botService.Client.SendTextMessageAsync(configuration.ChatId, messageText, cancellationToken: cancellationToken, parseMode: ParseMode.Markdown);
+                var message = await _botService.Client.SendTextMessageAsync(configuration.ChatId, messageText, cancellationToken: cancellationToken, parseMode: ParseMode.Markdown, disableWebPagePreview: true)
+                    .ConfigureAwait(false);
                 if (configuration.PinMessage)
                 {
-                    await _botService.Client.PinChatMessageAsync(configuration.ChatId, message.MessageId);
+                    var context = scope.ServiceProvider.GetService<BotDbContext>();
+                    const string pinnedMessageStateKey = "PinnedMessageId";
+                    var state = await context.States.FirstOrDefaultAsync(x => x.Key == pinnedMessageStateKey);
+                    if (state != null)
+                    {
+                        var oldPinnedMesageId = BotState.GetValue<long>(state);
+                        state.Value = message.MessageId.ToString();
+                        try
+                        {
+                            var response = await _botService.UnpinChatMessageAsync(configuration.ChatId, oldPinnedMesageId);
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                throw new Exception(response.ReasonPhrase);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error whle unpinning message");
+                        }
+                    }
+                    else
+                    {
+                        state = BotState.CreateBotState<long>(pinnedMessageStateKey, message.MessageId);
+                        context.States.Add(state);
+                    }
+                    await context.SaveChangesAsync();
+                    await _botService.Client
+                        .PinChatMessageAsync(configuration.ChatId, message.MessageId)
+                        .ConfigureAwait(false);
                 }
             } 
             else
