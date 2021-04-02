@@ -10,6 +10,11 @@ namespace ScheduleBot.Web.Services
 {
     public class MessageFormatService : IMessagesFormatService
     {
+        MessageFormatConfiguration _config;
+        public MessageFormatService(IOptionsSnapshot<MessageFormatConfiguration> config)
+        {
+            _config = config.Value;
+        }
         public string FormatLesson(Lesson lesson)
         {
             var builder = new StringBuilder();
@@ -42,16 +47,21 @@ namespace ScheduleBot.Web.Services
                 .Append("*")
                 .Append('\n')
                 .Append(lesson.TeacherName).Append('\n');
+            if (lesson.IsCanceledOnce || lesson.IsCanceled)
+            {
+                builder.Append("❌ ").Append(_config.IsCancelledMessage).Append('\n');
+                return;
+            }
             if (!string.IsNullOrWhiteSpace(lesson.MeetingLink))
             {
-                builder.Append("📞 ").Append($"[Meeting]({lesson.MeetingLink})").Append('\n');
+                builder.Append("📞 ").Append($"[{_config.Meeting}]({lesson.MeetingLink})").Append('\n');
             }
             if (!string.IsNullOrWhiteSpace(lesson.Chat))
             {
                 builder.Append("💬 ");
                 if (IsUrl(lesson.Chat))
                 {
-                    builder.Append($"[Chat]({lesson.Chat})");
+                    builder.Append($"[{_config.Chat}]({lesson.Chat})");
                 } 
                 else
                 {

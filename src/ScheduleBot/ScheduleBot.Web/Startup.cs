@@ -1,3 +1,4 @@
+using Cronos;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -40,14 +41,20 @@ namespace ScheduleBot.Web
             //services.RemoveAll<IHttpMessageHandlerBuilderFilter>();
             services.AddSingleton<IBotService, BotService>();
             services.AddScoped<ILessonService, LessonService>()
-                .AddSingleton<IMessagesFormatService, MessageFormatService>();
+                .AddScoped<IMessagesFormatService, MessageFormatService>();
             services.Configure<BotConfiguration>(Configuration.GetSection("BotConfiguration"));
             services.Configure<BotMessageConfiguration>(Configuration.GetSection("BotMessageConfiguration"));
             services.Configure<BotChatConfiguration>(Configuration.GetSection("BotChatConfiguration"));
+            services.Configure<MessageFormatConfiguration>(Configuration.GetSection("MessageFormatConfiguration"));
             services.AddCronJob<SendDayScheduleJob>(c =>
             {
                 c.TimeZoneInfo = TimeZoneInfo.Local;
-                c.CronExpression = Configuration["ScheduleSendInterval"];
+                try
+                {
+                    c.CronFormat = Enum.Parse<CronFormat>(Configuration["ScheduleSendConfig:CronFormat"]);
+                }
+                catch { }
+                c.CronExpression = Configuration["ScheduleSendConfig:ScheduleSendInterval"];
             });
             services.AddDbContext<BotDbContext>(options =>
             {

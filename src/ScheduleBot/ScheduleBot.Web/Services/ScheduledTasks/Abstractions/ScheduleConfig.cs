@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cronos;
+using System;
 
 namespace ScheduleBot.Web.Services.ScheduledTasks.Abstractions
 {
@@ -6,6 +7,7 @@ namespace ScheduleBot.Web.Services.ScheduledTasks.Abstractions
     {
         public string CronExpression { get; set; }
         public TimeZoneInfo TimeZoneInfo { get; set; }
+        public CronFormat CronFormat { get; set; }
     }
 
 }

@@ -15,10 +15,10 @@ namespace ScheduleBot.Web.Services.ScheduledTasks.Abstractions
         private readonly ILogger<CronJobService> _logger;
         private readonly TimeZoneInfo _timeZoneInfo;
         public string Name => GetType().Name;
-        protected CronJobService(ILogger<CronJobService> logger, string cronExpression, TimeZoneInfo timeZoneInfo)
+        protected CronJobService(ILogger<CronJobService> logger, string cronExpression, TimeZoneInfo timeZoneInfo, CronFormat cronFormat = CronFormat.Standard)
         {
             _cronExpression = cronExpression;
-            _expression = CronExpression.Parse(cronExpression);
+            _expression = CronExpression.Parse(cronExpression, cronFormat);
             _logger = logger;
             _timeZoneInfo = timeZoneInfo;
         }
