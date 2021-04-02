@@ -17,19 +17,16 @@ namespace ScheduleBot.Web.Services.ScheduledTasks
     {
         private readonly ILogger<SendDayScheduleJob> _logger;
         private readonly IBotService _botService;
-        private readonly IMessagesFormatService _messagesFormatService;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         public SendDayScheduleJob(
             IScheduleConfig<SendDayScheduleJob> config, 
             ILogger<SendDayScheduleJob> logger,
             IBotService botService,
-            IMessagesFormatService messagesFormatService,
             IServiceScopeFactory serviceScopeFactory)
-            : base(logger, config.CronExpression, config.TimeZoneInfo)
+            : base(logger, config.CronExpression, config.TimeZoneInfo, config.CronFormat)
         {
             _logger = logger;
             _botService = botService;
-            _messagesFormatService = messagesFormatService;
             _serviceScopeFactory = serviceScopeFactory;
         }
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -42,7 +39,8 @@ namespace ScheduleBot.Web.Services.ScheduledTasks
                 var lessonService = scope.ServiceProvider.GetService<ILessonService>();
                 var configuration = chatOptions.Value;
                 var todaysLessons = await lessonService.GetLessonsForDay(cancellationToken, DateTime.Now).ConfigureAwait(false);
-                var messageText = _messagesFormatService.FormatLessons(todaysLessons);
+                var messagesFormatService = scope.ServiceProvider.GetService<IMessagesFormatService>();
+                var messageText = messagesFormatService.FormatLessons(todaysLessons);
                 if (string.IsNullOrWhiteSpace(messageText))
                 {
                     messageText = scope.ServiceProvider.GetService<IOptionsSnapshot<BotMessageConfiguration>>().Value.TodayNoLessonsMessage;
@@ -75,6 +73,18 @@ namespace ScheduleBot.Web.Services.ScheduledTasks
                     {
                         state = BotState.CreateBotState<long>(pinnedMessageStateKey, message.MessageId);
                         context.States.Add(state);
+                    }
+                    foreach (var lesson in todaysLessons)
+                    {
+                        if (lesson.IsCanceledOnce)
+                        {
+                            lesson.IsCanceledOnce = false;
+                        }
+                        if (context.Entry(lesson).State == EntityState.Detached)
+                        {
+                            context.Attach(lesson);
+                        }
+                        context.Entry(lesson).State = EntityState.Modified;
                     }
                     await context.SaveChangesAsync();
                     await _botService.Client

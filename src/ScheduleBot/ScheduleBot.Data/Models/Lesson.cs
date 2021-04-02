@@ -5,6 +5,8 @@ namespace ScheduleBot.Data.Models
     public class Lesson
     {
         public int Id { get; set; }
+        public bool IsCanceled { get; set; }
+        public bool IsCanceledOnce { get; set; }
         public string Title { get; set; }
         public TimeSpan TimeStart { get; set; }
         public TimeSpan TimeEnd { get; set; }
